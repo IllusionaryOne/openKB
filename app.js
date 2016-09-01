@@ -16,6 +16,8 @@ var Nedb_store = require('nedb-session-store')(session);
 var remove_md = require('remove-markdown');
 var config = require('./routes/config');
 
+markdownit.use(require("markdown-it-toc"));
+
 // setup the db's
 var db = new Nedb();
 db = {};
