@@ -26,6 +26,7 @@ db.kb = new Nedb({filename: path.join(__dirname, '/data/kb.db'), autoload: true}
 var lunr_index = lunr(function (){
     this.field('kb_title', {boost: 10});
     this.field('kb_keywords');
+    this.field('kb_body');
 });
 
 // get all articles on startup
@@ -40,7 +41,8 @@ db.kb.find({}, function (err, kb_list){
         var doc = {
             'kb_title': kb.kb_title,
             'kb_keywords': keywords,
-            'id': kb._id
+            'id': kb._id,
+            'kb_body': kb.kb_body
         };
         lunr_index.add(doc);
     });
