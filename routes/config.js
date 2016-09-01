@@ -6,7 +6,7 @@ config.settings = {};
 config.settings.num_top_results = 10;
 
 // sets the global date formatting. Uses moment.js date formatting, see more here: http://momentjs.com/docs/#/displaying/
-config.settings.date_format = 'DD/MM/YYYY h:mmA';
+config.settings.date_format = 'MM/DD/YYYY h:mmA';
 
 // sets whether the view count will be shown next to the top results on the homepage/search
 config.settings.show_view_count = true;
@@ -19,7 +19,7 @@ config.settings.sort_by = {field: 'kb_viewcount', order: -1}; // see below:
 // order options are: -1 or 1
 
 // sets the website title
-config.settings.website_title = 'openKB';
+config.settings.website_title = 'PhantomBot Knowledgebase';
 
 // sets the website theme (themes are located in /public/themes/<folder name>)
 //config.settings.theme = 'twitter';

@@ -62,11 +62,6 @@ html{
     font-size: 14px;
 }
 
-.list-group-sidemenu li{
-    background-color: transparent;
-    border: none;
-}
-
 .CodeMirror {
     height: calc(100vh - 110px - 175px - 70px) !important;
     overflow: auto;
@@ -157,7 +152,7 @@ html{
 }
 
 .notify_message-success{
-    background-color: #18bc9c;
+    background-color: #6441a5;
 }
 
 .notify_message-danger{
@@ -202,4 +197,8 @@ html{
     background: white;
     cursor: inherit;
     display: block;
+}
+
+a:visited {
+    color: #513388;
 }

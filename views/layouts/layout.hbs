@@ -24,14 +24,14 @@
         <meta name="description" content="{{substring (strip_md result.kb_body) 160}}">
         <meta property="og:description" content="{{substring (strip_md result.kb_body) 160}}" />
         {{else}}
-        <meta name="description" content="Powered by openKB">
-        <meta property="og:description" content="Powered by openKB" />
+        <meta name="description" content="Powered by ZELAKTO.TV">
+        <meta property="og:description" content="Powered by ZELAKTO.TV" />
         {{/if}}
         {{/if}}
         {{#if result.kb_keywords}}
 		<meta name="keywords" content="{{result.kb_keywords}}">
         {{else}}
-        <meta name="keywords" content="openKB">
+        <meta name="keywords" content="PhantomBot">
         {{/if}}
         <meta property="og:type" content="article" />
         <meta property="og:image" content="{{current_url}}/logo.png" />
@@ -60,7 +60,7 @@
         <script src="/javascripts/jpushmenu.js"></script>
 		<script src="/javascripts/openKB.js"></script>
 	</head>
-	<body class="{{show_footer}}">	
+	<body class="{{show_footer}}">
 		<!-- Static navbar -->
 	    <nav class="navbar navbar-default navbar-static-top">
 			<div class="container-fluid">
@@ -107,12 +107,10 @@
 							{{#if config.settings.suggest_allowed}}
 								<li><a href="/suggest">Suggest</a></li>
 							{{/if}}
-							<li><a href="/login">Login</a></li>
-						{{/if}}	
 					</ul>
 				</div>
 	      </div>
-	    </nav>	
+	    </nav>
 		<div class="container-fluid">
 			{{{body}}}
 		</div>
@@ -122,7 +120,16 @@
 		{{#if show_footer}}
 			<footer class="footer">
 				<div class="container">
-					<p class="text-muted">Powered by openKB</p>
+					<div class="container">
+						<p class="text-muted">
+						Copyright &copy;
+							<script language="javascript" type="text/javascript">
+	              var today = new Date()
+	              var year = today.getFullYear()
+	              document.write(year)
+	          	</script>
+						PhantomBot - <a href="https://zelakto.tv/">Powered by ZELAKTO.TV</a></p>
+					</div>
 				</div>
 			</footer>
 		{{/if}}
