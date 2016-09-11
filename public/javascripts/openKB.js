@@ -5,10 +5,14 @@ $(document).ready(function(){
     });
 
     // make all links in articles open in new window/tab
-    //$('.body_text a').attr('target', '_blank');
+    if($('#blank_links').val() === 'true'){
+        $('.body_text a').attr('target', '_blank');
+    }
 
 	// setup mermaid charting
-	mermaid.initialize({startOnLoad: true});
+    if(typeof mermaid !== 'undefined'){
+        mermaid.initialize({startOnLoad: true});
+    }
 
 	// add the table class to all tables
     $('table').each(function(){
@@ -92,7 +96,7 @@ $(document).ready(function(){
 	$("input[class='published_state']").change(function(){
 		$.ajax({
 			method: 'POST',
-			url: '/published_state',
+			url: $('#app_context').val() + '/published_state',
 			data: {id: this.id, state: this.checked}
 		})
 		.done(function(msg){
@@ -127,7 +131,7 @@ $(document).ready(function(){
 		if($('#frm_kb_permalink').val() !== ''){
 			$.ajax({
 				method: 'POST',
-				url: '/api/validate_permalink',
+				url: $('#app_context').val() + '/api/validate_permalink',
 				data: {'permalink': $('#frm_kb_permalink').val(), 'doc_id': $('#frm_kb_id').val()}
 			})
 			.done(function(msg){
@@ -151,12 +155,12 @@ $(document).ready(function(){
 
 	// applies an article filter
 	$('#btn_articles_filter').click(function(){
-		window.location.href = '/articles/' + $('#article_filter').val();
+		window.location.href = $('#app_context').val() + '/articles/' + $('#article_filter').val();
 	});
 
 	// resets the article filter
 	$('#btn_articles_reset').click(function(){
-		window.location.href = '/articles';
+		window.location.href = $('#app_context').val() + '/articles';
 	});
 
 	// search button click event
@@ -186,7 +190,7 @@ function file_delete_confirm(img, id){
 	if(window.confirm('Are you sure you want to delete the file?')){
 		$.ajax({
 			method: 'POST',
-			url: '/file/delete',
+			url: $('#app_context').val() + '/file/delete',
 			data: {img: img}
 		})
 		.done(function(msg){

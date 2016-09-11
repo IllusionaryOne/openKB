@@ -1,6 +1,6 @@
 <div class="col-md-10 col-md-offset-1">
 	<div class="row">
-		<form method="post" id="edit_form" action="/insert_suggest" data-toggle="validator">
+		<form method="post" id="edit_form" action="{{app_context}}/insert_suggest" data-toggle="validator">
 			<input type="hidden" name="frm_kb_id" value="{{result._id}}" />
 			<div id="header row">
 				<div class="col-xs-12 col-sm-10 col-md-10 col-lg-10">
@@ -16,7 +16,7 @@
 			</div>
 			<div id="editor-pagewrapper row">
 				<div class="col-xs-12 col-md-6">
-					<div class="form-group" id="editor-wrapper">
+					<div class="form-group" id="editor-wrapper" class="suggest-editor">
 						<label for="editor">Article body (Markdown) *</label>
                         <textarea id="editor" minlength="5" name="frm_kb_body" data-provide="markdown" data-hidden-buttons="cmdPreview" data-iconlibrary="fa" class="form-control" required>{{{result.kb_body}}}</textarea>
 					</div>
@@ -24,7 +24,7 @@
 				<div class="col-xs-12 col-md-6">
 					<div class="form-group" id="preview-wrapper">
 						<label for="preview">Preview</label>
-						<div id="preview" name="preview" class="form-control" rows="10"></div>
+						<div id="preview" name="preview" class="form-control suggest-preview" rows="10"></div>
 					</div>
 				</div>
 			</div>

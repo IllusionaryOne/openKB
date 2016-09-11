@@ -3,15 +3,15 @@
 	color: #d9534f;
 }
 
-@media (max-width: 979px) { 
-	body { 
-		padding-bottom: 20px; 
-	} 
-	
+@media (max-width: 979px) {
+	body {
+		padding-bottom: 20px;
+	}
+
 	.view_count, #preview-wrapper {
 		display: none;
 	}
-    
+
     #editor-wrapper {
         padding-top: 20px;
     }
@@ -19,6 +19,10 @@
     #frm_edit_kb_save, #frm_kb_published{
         float:right;
     }
+
+		a:visited {
+		    color: #513388;
+		}
 
     .permalink_buttons{
         padding-top: 15px;
@@ -54,7 +58,7 @@ html{
     background: transparent;
 }
 
-#header {        
+#header {
     height: 50px;
 }
 
@@ -62,8 +66,18 @@ html{
     font-size: 14px;
 }
 
+.list-group-sidemenu li{
+    background-color: transparent;
+    border: none;
+}
+
 .CodeMirror {
     height: calc(100vh - 110px - 175px - 70px) !important;
+    overflow: auto;
+}
+
+#editor-wrapper-suggest > .CodeMirror{
+    height: calc(100vh - 110px - 175px - 110px) !important;
     overflow: auto;
 }
 
@@ -88,6 +102,10 @@ html{
     overflow: auto;
 }
 
+.suggest-preview{
+    height: calc(100vh - 110px - 235px) !important;
+}
+
 .show_footer{
     margin-bottom: 60px;
 }
@@ -108,7 +126,7 @@ html{
 
 .dropdown-menu>li>a{
     padding-top: 5px !important;
-    
+
 }
 
 .pad-bottom{
@@ -127,7 +145,7 @@ html{
 }
 
 .editor_btn_action{
-    border-top-left-radius: 0px !important; 
+    border-top-left-radius: 0px !important;
     border-bottom-left-radius: 0px !important;
 }
 
@@ -144,8 +162,8 @@ html{
     z-index: 9999;
     padding-top: 10px;
     height: 50px;
-    bottom: 0px; 
-    width: 100%; 
+    bottom: 0px;
+    width: 100%;
     text-align: center;
     font-size: 22px;
     color: white;
@@ -197,8 +215,4 @@ html{
     background: white;
     cursor: inherit;
     display: block;
-}
-
-a:visited {
-    color: #513388;
 }
