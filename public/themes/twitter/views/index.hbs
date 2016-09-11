@@ -42,14 +42,13 @@
                         <li><a href="/logout">Logout</a></li>
                     {{else}}
                         {{#if config.settings.suggest_allowed}}
-                            <li><a href="/suggest">Suggest</a></li>
+                            <li><a href="/suggest">Suggest an Article</a></li>
                         {{/if}}
-                        <li><a href="/login">Login</a></li>
-                    {{/if}}	
+                    {{/if}}
                 </ul>
             </div>
         </div>
-    </nav>	
+    </nav>
     <div class="">
         <h1>Help Center</h1>
     </div>
@@ -70,8 +69,8 @@
 </div>
 <div class="row">
     <div class="col-md-6 col-md-offset-3 col-lg-6 col-lg-offset-3">
-        <h2 class="text-center">Twitter Support</h2>
-        <p class="subheading">Get instant answers for the most common questions and learn how to use 140 characters like a pro.</p>
+        <h2 class="text-center">PhantomBot Support</h2>
+        <p class="subheading">Get instant answers for the most common questions and learn how to PhantomBot like a pro.</p>
     </div>
 </div>
 <div class="row">
@@ -89,11 +88,11 @@
                                     <a href="/kb/{{this.kb_permalink}}">MORE</a>
                                 {{else}}
                                     <a href="/kb/{{this._id}}">MORE</a>
-                                {{/if}}  
+                                {{/if}}
                             </div>
                         </div>
                     </div>
-                {{/each}}       
+                {{/each}}
             </div>
         </div>
         <div class="col-md-8 col-md-offset-2 col-lg-8 col-lg-offset-2">
@@ -145,7 +144,7 @@
 			</div>
 		{{else}}
 			<div class="panel panel-default" style="margin-top: 30px;">
-				<div class="panel-heading">Trending topics</div>
+				<div class="panel-heading">Trending topics:</div>
 				<div class="panel-body">
 					<ul class="list-group">
 						{{#each top_results}}

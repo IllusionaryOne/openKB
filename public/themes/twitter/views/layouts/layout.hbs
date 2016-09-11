@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-        {{#if result.kb_seo_title}}
-        <title>{{result.kb_seo_title}}</title>
-        {{else}}
-        {{#if result.kb_title}}
-        <title>{{result.kb_title}}</title>
-        {{else}}
-        <title>{{title}}</title>
+		{{#if result.kb_seo_title}}
+		<title>{{result.kb_seo_title}}</title>
+		<meta property="og:title" content="{{result.kb_seo_title}}" />
+		{{else}}
+		{{#if result.kb_title}}
+		<title>{{result.kb_title}}</title>
+		<meta property="og:title" content="{{result.kb_title}}" />
+		{{else}}
+		<title>PhantomBot Knowledgebase</title>
+		<meta property="og:title" content="PhantomBot Knowledgebase" />
         {{/if}}
         {{/if}}
 	    <meta charset="utf-8">
@@ -19,7 +22,8 @@
         {{#if result.kb_body}}
         <meta name="description" content="{{substring (strip_md result.kb_body) 160}}">
         {{else}}
-        <meta name="description" content="Powered by openKB">
+				<meta name="description" content="Powered by ZELAKTO.TV">
+        <meta property="og:description" content="Powered by ZELAKTO.TV" />
         {{/if}}
         {{/if}}
         {{#if result.kb_keywords}}
@@ -49,7 +53,7 @@
         <script src="/javascripts/jpushmenu.js"></script>
 		<script src="/javascripts/openKB.js"></script>
 	</head>
-	<body class="{{show_footer}}">	
+	<body class="{{show_footer}}">
 		<!-- Static navbar -->
 		<div class="container-fluid">
 			{{{body}}}
@@ -60,7 +64,14 @@
 		{{#if show_footer}}
 			<footer class="footer">
 				<div class="container">
-					<p class="text-muted text-center">Powered by openKB</p>
+					<p class="text-muted text-center">
+					Copyright &copy;
+						<script language="javascript" type="text/javascript">
+							var today = new Date()
+							var year = today.getFullYear()
+							document.write(year)
+						</script>
+					PhantomBot - <a href="https://zelakto.tv/">Powered by ZELAKTO.TV</a></p>
 				</div>
 			</footer>
 		{{/if}}

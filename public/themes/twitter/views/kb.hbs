@@ -42,14 +42,13 @@
                         <li><a href="/logout">Logout</a></li>
                     {{else}}
                         {{#if config.settings.suggest_allowed}}
-                            <li><a href="/suggest">Suggest</a></li>
+                            <li><a href="/suggest">Suggest an Article</a></li>
                         {{/if}}
-                        <li><a href="/login">Login</a></li>
-                    {{/if}}	
+                    {{/if}}
                 </ul>
             </div>
         </div>
-    </nav>	
+    </nav>
     <div class="">
         <h1>How can we help?</h1>
     </div>
@@ -127,6 +126,7 @@
                             <strong>Permalink:</strong> <a href="{{current_url}}/kb/{{result.kb_permalink}}" target="_blank">{{current_url}}/kb/{{result.kb_permalink}}</a>
                         </h5>
                         {{/if}}
+                        <h5 class="col-sm-12 col-lg-6"><strong>Still need help?</strong> Ask on the <a href="https://community.phantombot.tv/">community forum</a>!</h5>
                     </div>
                 </div>
             {{/if}}
