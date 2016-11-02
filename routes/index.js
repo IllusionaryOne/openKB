@@ -8,6 +8,7 @@ var config = common.read_config();
 // The homepage of the site
 router.get('/', common.restrict, function(req, res, next){
     var db = req.app.db;
+    common.config_expose(req.app);
     var featuredCount = config.settings.featured_articles_count ? config.settings.featured_articles_count : 4;
 
     // set the template dir
@@ -24,6 +25,8 @@ router.get('/', common.restrict, function(req, res, next){
         common.dbQuery(db.kb, {kb_published: 'true', kb_featured: 'true'}, sortBy, featuredCount, function(err, featured_results){
             res.render('index', {
                 title: 'openKB',
+                user_page: true,
+                homepage: true,
                 top_results: top_results,
                 featured_results: featured_results,
                 session: req.session,
@@ -56,11 +59,95 @@ router.post('/protected/action', function(req, res){
 	});
 });
 
-router.get('/kb/:id', common.restrict, function(req, res){
+router.post('/search_api', function(req, res){
+    var lunr_index = req.lunr_index;
+    var lunr_store = req.lunr_store;
+    res.status(200).json({index: lunr_index, store: lunr_store});
+});
+
+// vote on articles
+router.post('/vote', function(req, res){
     var db = req.app.db;
+
+    // if voting allowed
+    if(config.settings.allow_voting === true){
+        // check if voted
+        db.votes.findOne({$and: [{doc_id: req.body.doc_id}, {session_id: req.sessionID}]}, function (err, result){
+            // if not voted
+            if(!result){
+                var vote = req.body.vote_type === 'upvote' ? 1 : -1;
+                // update kb vote
+                db.kb.update({_id: common.getId(req.body.doc_id)}, {$inc: {kb_votes: vote}}, function (err, numReplaced){
+                    // insert session id into table to stop muli-voters
+                    db.votes.insert({doc_id: req.body.doc_id, session_id: req.sessionID}, function (err, newDoc){
+                        res.writeHead(200, {'Content-Type': 'application/text'});
+                        res.end('Vote successful');
+                    });
+                });
+            }else{
+                // User has already voted
+                res.writeHead(404, {'Content-Type': 'application/text'});
+                res.end('User already voted');
+            }
+        });
+    }else{
+        // Voting not allowed
+        res.writeHead(404, {'Content-Type': 'application/text'});
+        res.end('Voting now allowed');
+    }
+});
+
+// Render a version of the article to logged in users
+router.get('/kb/:id/version', common.restrict, function(req, res){
+    var db = req.app.db;
+    common.config_expose(req.app);
 	var classy = require('../public/javascripts/markdown-it-classy');
 	var markdownit = req.markdownit;
 	markdownit.use(classy);
+
+    // check for logged in user
+    if(!req.session.user){
+        res.render('error', {message: '404 - Page not found', helpers: req.handlebars, config: config});
+        return;
+    }
+
+    // get sortBy from config, set to 'kb_viewcount' if nothing found
+    var sortByField = typeof config.settings.sort_by.field !== 'undefined' ? config.settings.sort_by.field : 'kb_viewcount';
+    var sortByOrder = typeof config.settings.sort_by.order !== 'undefined' ? config.settings.sort_by.order : -1;
+    var sortBy = {};
+    sortBy[sortByField] = sortByOrder;
+
+    var featuredCount = config.settings.featured_articles_count ? config.settings.featured_articles_count : 4;
+
+    db.kb.findOne({_id: common.getId(req.params.id)}, function (err, result){
+        // show the view
+        common.dbQuery(db.kb, {kb_published: 'true', kb_versioned_doc: {$eq: true}}, sortBy, featuredCount, function(err, featured_results){
+            res.render('kb', {
+                title: result.kb_title,
+                result: result,
+                user_page: true,
+                kb_body: markdownit.render(result.kb_body),
+                featured_results: featured_results,
+                config: config,
+                session: req.session,
+                current_url: req.protocol + '://' + req.get('host') + req.app_context,
+                fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
+                message: common.clear_session_value(req.session, 'message'),
+                message_type: common.clear_session_value(req.session, 'message_type'),
+                helpers: req.handlebars,
+                show_footer: 'show_footer'
+            });
+        });
+    });
+});
+
+router.get('/kb/:id', common.restrict, function(req, res){
+    var db = req.app.db;
+    common.config_expose(req.app);
+	var classy = require('../public/javascripts/markdown-it-classy');
+	var markdownit = req.markdownit;
+	markdownit.use(classy);
+
     var featuredCount = config.settings.featured_articles_count ? config.settings.featured_articles_count : 4;
 
     // set the template dir
@@ -72,7 +159,7 @@ router.get('/kb/:id', common.restrict, function(req, res){
     var sortBy = {};
     sortBy[sortByField] = sortByOrder;
 
-	db.kb.findOne({$or: [{_id: common.getId(req.params.id)}, {kb_permalink: req.params.id}]}, function (err, result){
+	db.kb.findOne({$or: [{_id: common.getId(req.params.id)}, {kb_permalink: req.params.id}], kb_versioned_doc: {$ne: true}}, function (err, result){
 		// render 404 if page is not published
 		if(result == null || result.kb_published === 'false'){
             res.render('error', {message: '404 - Page not found', helpers: req.handlebars, config: config});
@@ -83,7 +170,8 @@ router.get('/kb/:id', common.restrict, function(req, res){
                     if(req.session.pw_validated === 'false' || req.session.pw_validated === undefined || req.session.pw_validated == null){
                         res.render('protected_kb', {
                             title: 'Protected Article',
-                            'result': result,
+                            result: result,
+                            config: config,
                             session: req.session,
                             helpers: req.handlebars
                         });
@@ -98,8 +186,19 @@ router.get('/kb/:id', common.restrict, function(req, res){
 				old_viewcount = 0;
 			}
 
-			var new_viewcount = old_viewcount + 1;
-			db.kb.update({_id: common.getId(req.params.id)},
+            var new_viewcount = old_viewcount;
+            // increment if the user is logged in and if settings say so
+            if(req.session.user && config.settings.update_view_count_logged_in){
+                new_viewcount = old_viewcount + 1;
+            }
+
+            // increment if the user is a guest and not logged in
+            if(!req.session.user){
+                new_viewcount = old_viewcount + 1;
+            }
+
+            // update kb_viewcount
+			db.kb.update({$or: [{_id: common.getId(req.params.id)}, {kb_permalink: req.params.id}]},
 				{
 					$set: {kb_viewcount: new_viewcount}
 				}, {multi: false}, function (err, numReplaced){
@@ -111,6 +210,7 @@ router.get('/kb/:id', common.restrict, function(req, res){
                     res.render('kb', {
                         title: result.kb_title,
                         result: result,
+                        user_page: true,
                         kb_body: markdownit.render(result.kb_body),
                         featured_results: featured_results,
                         config: config,
@@ -130,19 +230,27 @@ router.get('/kb/:id', common.restrict, function(req, res){
 
 // render the settings page
 router.get('/settings', common.restrict, function(req, res){
+    var junk = require('junk');
+
     // only allow admin
     if(req.session.is_admin !== 'true'){
         res.render('error', {message: 'Access denied', helpers: req.handlebars, config: config});
         return;
     }
 
-    res.render('settings', {
-        title: 'Settings',
-        session: req.session,
-        message: common.clear_session_value(req.session, 'message'),
-        message_type: common.clear_session_value(req.session, 'message_type'),
-        config: config,
-        helpers: req.handlebars
+    // path to themes
+    var themePath = path.join(__dirname, '../public/themes');
+
+    fs.readdir(themePath, function (err, files){
+        res.render('settings', {
+            title: 'Settings',
+            session: req.session,
+            themes: files.filter(junk.not),
+            message: common.clear_session_value(req.session, 'message'),
+            message_type: common.clear_session_value(req.session, 'message_type'),
+            config: config,
+            helpers: req.handlebars
+        });
     });
 });
 
@@ -162,7 +270,7 @@ router.post('/update_settings', common.restrict, function(req, res){
 
     // loop settings, update config
     for(var key in settings){
-        if(settings.hasOwnProperty(key)){
+        if(Object.prototype.hasOwnProperty.call(settings, key)){
             // if true/false, convert to boolean - TODO: Figure a better way of doing this?
             var settingValue = settings[key];
             if(booleanArray.indexOf(settingValue) > -1){
@@ -180,9 +288,8 @@ router.post('/update_settings', common.restrict, function(req, res){
     req.session.message_type = 'success';
 
     // redirect back
-    res.redirect('/settings');
+    res.redirect(req.app_context + '/settings');
 });
-
 
 // resets the view count of a given article ID
 router.get('/kb/resetviewCount/:id', common.restrict, function(req, res){
@@ -201,19 +308,45 @@ router.get('/kb/resetviewCount/:id', common.restrict, function(req, res){
     });
 });
 
+// resets the vote count of a given article ID
+router.get('/kb/resetvoteCount/:id', common.restrict, function(req, res){
+    var db = req.app.db;
+    db.kb.update({_id: common.getId(req.params.id)}, {$set: {kb_votes: 0}}, {multi: false}, function (err, numReplaced){
+        if(err){
+            req.session.message = 'Vote count could not be reset. Try again.';
+			req.session.message_type = 'danger';
+        }else{
+            req.session.message = 'Vote count successfully reset to zero.';
+            req.session.message_type = 'success';
+        }
+
+        // redirect to new doc
+        res.redirect(req.app_context + '/edit/' + req.params.id);
+    });
+});
+
 // render the editor
 router.get('/edit/:id', common.restrict, function(req, res){
     var db = req.app.db;
-    db.kb.findOne({_id: common.getId(req.params.id)}, function (err, result){
-        res.render('edit', {
-            title: 'Edit article',
-            'result': result,
-            session: req.session,
-            message: common.clear_session_value(req.session, 'message'),
-            message_type: common.clear_session_value(req.session, 'message_type'),
-            config: config,
-            editor: true,
-            helpers: req.handlebars
+    common.config_expose(req.app);
+    db.kb.findOne({_id: common.getId(req.params.id), kb_versioned_doc: {$ne: true}}, function (err, result){
+        if(!result){
+            res.render('error', {message: '404 - Page not found', helpers: req.handlebars, config: config});
+            return;
+        }
+
+        common.dbQuery(db.kb, {kb_parent_id: req.params.id}, {kb_last_updated: -1}, 20, function(err, versions){
+            res.render('edit', {
+                title: 'Edit article',
+                result: result,
+                versions: versions,
+                session: req.session,
+                message: common.clear_session_value(req.session, 'message'),
+                message_type: common.clear_session_value(req.session, 'message_type'),
+                config: config,
+                editor: true,
+                helpers: req.handlebars
+            });
         });
     });
 });
@@ -285,6 +418,15 @@ router.post('/insert_kb', common.restrict, function(req, res){
 						kb_keywords: keywords,
 						id: newId
 					};
+
+                    // if index body is switched on
+                    if(config.settings.index_article_body === true){
+                        lunr_doc['kb_body'] = req.body.frm_kb_body;
+                    }
+
+                    // add to store
+                    var href = req.body.frm_kb_permalink !== '' ? req.body.frm_kb_permalink : newId;
+                    req.lunr_store[newId] = {t: req.body.frm_kb_title, p: href};
 
 					// add to lunr index
 					lunr_index.add(lunr_doc);
@@ -363,6 +505,15 @@ router.post('/insert_suggest', common.suggest_allowed, function(req, res){
 				id: newId
 			};
 
+            // if index body is switched on
+            if(config.settings.index_article_body === true){
+                lunr_doc['kb_body'] = req.body.frm_kb_body;
+            }
+
+            // update store
+            var href = newId;
+            req.lunr_store[newId] = {t: req.body.frm_kb_title, p: href};
+
 			// add to lunr index
 			lunr_index.add(lunr_doc);
 
@@ -400,6 +551,7 @@ router.post('/save_kb', common.restrict, function(req, res){
             req.session.kb_featured = kb_featured;
             req.session.kb_seo_title = req.body.frm_kb_seo_title;
             req.session.kb_seo_description = req.body.frm_kb_seo_description;
+            req.session.b_edit_reason = req.body.frm_kb_edit_reason;
 
 			// redirect to insert
 			res.redirect(req.app_context + '/edit/' + req.body.frm_kb_id);
@@ -417,8 +569,9 @@ router.post('/save_kb', common.restrict, function(req, res){
 					published_date = article.kb_published_date;
 				}
 
-				db.kb.update({_id: common.getId(req.body.frm_kb_id)}, {$set:
-						{kb_title: req.body.frm_kb_title,
+                // update our old doc
+				db.kb.update({_id: common.getId(req.body.frm_kb_id)}, {$set: {
+                            kb_title: req.body.frm_kb_title,
 							kb_body: req.body.frm_kb_body,
 							kb_published: req.body.frm_kb_published,
 							kb_keywords: keywords,
@@ -432,8 +585,7 @@ router.post('/save_kb', common.restrict, function(req, res){
                             kb_featured: kb_featured,
                             kb_seo_title: req.body.frm_kb_seo_title,
                             kb_seo_description: req.body.frm_kb_seo_description
-						}
-					}, {}, function(err, numReplaced){
+                    }}, {}, function(err, numReplaced){
 					if(err){
 						console.error('Failed to save KB: ' + err);
 						req.session.message = 'Failed to save. Please try again';
@@ -446,19 +598,61 @@ router.post('/save_kb', common.restrict, function(req, res){
 							keywords = req.body.frm_kb_keywords.toString().replace(/,/g, ' ');
 						}
 
-						// create lunr doc
-						var lunr_doc = {
-							kb_title: req.body.frm_kb_title,
-							kb_keywords: keywords,
-							id: req.body.frm_kb_id
-						};
+                        // create lunr doc
+                        var lunr_doc = {
+                            kb_title: req.body.frm_kb_title,
+                            kb_keywords: keywords,
+                            id: req.body.frm_kb_id
+                        };
 
-						// update the index
-						lunr_index.update(lunr_doc, false);
+                        // if index body is switched on
+                        if(config.settings.index_article_body === true){
+                            lunr_doc['kb_body'] = req.body.frm_kb_body;
+                        }
 
-						req.session.message = 'Successfully saved';
-						req.session.message_type = 'success';
-						res.redirect(req.app_context + '/edit/' + req.body.frm_kb_id);
+                        // update store
+                        var href = req.body.frm_kb_permalink !== '' ? req.body.frm_kb_permalink : req.body.frm_kb_id;
+                        req.lunr_store[req.body.frm_kb_id] = {t: req.body.frm_kb_title, p: href};
+
+                        // update the index
+                        lunr_index.update(lunr_doc, false);
+
+                        var article_versioning = config.settings.article_versioning ? config.settings.article_versioning : false;
+
+                        // if versions turned on, insert a doc to track versioning
+                        if(article_versioning === true){
+                            // version doc
+                            var version_doc = {
+                                kb_title: req.body.frm_kb_title,
+                                kb_parent_id: req.body.frm_kb_id,
+                                kb_versioned_doc: true,
+                                kb_edit_reason: req.body.frm_kb_edit_reason,
+                                kb_body: req.body.frm_kb_body,
+                                kb_published: false,
+                                kb_keywords: keywords,
+                                kb_last_updated: new Date(),
+                                kb_last_update_user: req.session.users_name + ' - ' + req.session.user,
+                                kb_author: author,
+                                kb_author_email: author_email,
+                                kb_published_date: published_date,
+                                kb_password: req.body.frm_kb_password,
+                                kb_permalink: req.body.frm_kb_permalink,
+                                kb_featured: kb_featured,
+                                kb_seo_title: req.body.frm_kb_seo_title,
+                                kb_seo_description: req.body.frm_kb_seo_description
+                            };
+
+                            // insert a doc to track versioning
+                            db.kb.insert(version_doc, function (err, version_doc){
+                                req.session.message = 'Successfully saved';
+                                req.session.message_type = 'success';
+                                res.redirect(req.app_context + '/edit/' + req.body.frm_kb_id);
+                            });
+                        }else{
+                            req.session.message = 'Successfully saved';
+                            req.session.message_type = 'success';
+                            res.redirect(req.app_context + '/edit/' + req.body.frm_kb_id);
+                        }
 					}
 				});
 			});
@@ -469,6 +663,9 @@ router.post('/save_kb', common.restrict, function(req, res){
 // logout
 router.get('/logout', function(req, res){
     req.session.user = null;
+    req.session.users_name = null;
+    req.session.is_admin = null;
+    req.session.pw_validated = null;
 	req.session.message = null;
 	req.session.message_type = null;
 	res.redirect(req.app_context + '/');
@@ -547,7 +744,7 @@ router.get('/users/new', common.restrict, function(req, res){
 // kb list
 router.get('/articles', common.restrict, function(req, res){
     var db = req.app.db;
-    common.dbQuery(db.kb, {}, {kb_published_date: -1}, 10, function(err, articles){
+    common.dbQuery(db.kb, {kb_versioned_doc: {$ne: true}}, {kb_published_date: -1}, 10, function(err, articles){
         res.render('articles', {
             title: 'Articles',
             articles: articles,
@@ -562,7 +759,7 @@ router.get('/articles', common.restrict, function(req, res){
 
 router.get('/articles/all', common.restrict, function(req, res){
     var db = req.app.db;
-    common.dbQuery(db.kb, {}, {kb_published_date: -1}, null, function(err, articles){
+    common.dbQuery(db.kb, {kb_versioned_doc: {$ne: true}}, {kb_published_date: -1}, null, function(err, articles){
         res.render('articles', {
             title: 'Articles',
             articles: articles,
@@ -688,6 +885,11 @@ router.post('/user_update', common.restrict, function(req, res){
             return;
         }
 
+        // if editing your own account, retain admin true/false
+        if(user.user_email === req.session.user){
+            is_admin = user.is_admin;
+        }
+
         // create the update doc
         var update_doc = {};
         update_doc.is_admin = is_admin;
@@ -800,29 +1002,6 @@ router.get('/file_cleanup', common.restrict, function(req, res){
     });
 });
 
-// validate the permalink
-router.post('/api/validate_permalink', function(req, res){
-    var db = req.app.db;
-	// if doc id is provided it checks for permalink in any docs other that one provided,
-	// else it just checks for any kb's with that permalink
-	var query = {};
-	if(req.body.doc_id === ''){
-		query = {'kb_permalink': req.body.permalink};
-	}else{
-		query = {'kb_permalink': req.body.permalink, $not: {_id: req.body.doc_id}};
-	}
-
-	db.kb.count(query, function (err, kb){
-		if(kb > 0){
-			res.writeHead(400, {'Content-Type': 'application/text'});
-			res.end('Permalink already exists');
-		}else{
-			res.writeHead(200, {'Content-Type': 'application/text'});
-			res.end('Permalink validated successfully');
-		}
-	});
-});
-
 // login the user and check the password
 router.post('/login_action', function(req, res){
     var db = req.app.db;
@@ -900,10 +1079,11 @@ router.get('/delete/:id', common.restrict, function(req, res){
 
 		// create lunr doc
 		var lunr_doc = {
-			kb_title: req.body.frm_kb_title,
-			kb_keywords: keywords,
-			id: req.body.frm_kb_id
+			id: req.params.id
 		};
+
+        // remove from store
+        delete req.lunr_store[req.params.id];
 
 		// remove the index
 		lunr_index.remove(lunr_doc, false);
@@ -923,7 +1103,7 @@ router.post('/file/upload_file', common.restrict, inline_upload.single('file'), 
 	if(req.file){
 		// check for upload select
 		var upload_dir = path.join('public', 'uploads', 'inline_files');
-		var relative_upload_dir = path.join('/uploads', 'inline_files');
+		var relative_upload_dir = '/uploads/inline_files';
 
 		var file = req.file;
 		var source = fs.createReadStream(file.path);
@@ -938,7 +1118,7 @@ router.post('/file/upload_file', common.restrict, inline_upload.single('file'), 
 
 		// uploaded
 		res.writeHead(200, {'Content-Type': 'application/json'});
-		res.end(JSON.stringify({'filename': path.join(relative_upload_dir, file.originalname)}, null, 3));
+		res.end(JSON.stringify({'filename': relative_upload_dir + '/' + file.originalname}));
 		return;
 	}
     res.writeHead(500, {'Content-Type': 'application/json'});
@@ -972,20 +1152,20 @@ router.post('/file/new_dir', common.restrict, function (req, res, next){
 
 // upload the file
 var multer = require('multer');
-var upload = multer({dest: 'public/uploads/'});
+var upload = multer({dest: path.join('public', 'uploads')});
 router.post('/file/upload', common.restrict, upload.single('upload_file'), function (req, res, next){
 	var fs = require('fs');
 
 	if(req.file){
 		// check for upload select
-		var upload_dir = 'public/uploads/';
+		var upload_dir = path.join('public', 'uploads');
 		if(req.body.directory !== '/uploads'){
-			upload_dir = 'public/' + req.body.directory;
+			upload_dir = path.join('public/', req.body.directory);
 		}
 
 		var file = req.file;
 		var source = fs.createReadStream(file.path);
-		var dest = fs.createWriteStream(upload_dir + '/' + file.originalname.replace(/ /g, '_'));
+		var dest = fs.createWriteStream(path.join(upload_dir, file.originalname.replace(/ /g, '_')));
 
 		// save the new file
 		source.pipe(dest);
@@ -1106,6 +1286,7 @@ router.get('/insert', common.restrict, function(req, res){
 // search kb's
 router.get('/search/:tag', common.restrict, function(req, res){
     var db = req.app.db;
+    common.config_expose(req.app);
 	var search_term = req.params.tag;
 	var lunr_index = req.lunr_index;
 
@@ -1129,11 +1310,12 @@ router.get('/search/:tag', common.restrict, function(req, res){
     sortBy[sortByField] = sortByOrder;
 
 	// we search on the lunr indexes
-    common.dbQuery(db.kb, {_id: {$in: lunr_id_array}, kb_published: 'true'}, null, null, function(err, results){
+    common.dbQuery(db.kb, {_id: {$in: lunr_id_array}, kb_published: 'true', kb_versioned_doc: {$ne: true}}, null, null, function(err, results){
         common.dbQuery(db.kb, {kb_published: 'true', kb_featured: 'true'}, sortBy, featuredCount, function(err, featured_results){
             res.render('index', {
                 title: 'Search results: ' + search_term,
                 search_results: results,
+                user_page: true,
                 session: req.session,
                 featured_results: featured_results,
                 message: common.clear_session_value(req.session, 'message'),
@@ -1150,6 +1332,7 @@ router.get('/search/:tag', common.restrict, function(req, res){
 // search kb's
 router.post('/search', common.restrict, function(req, res){
     var db = req.app.db;
+    common.config_expose(req.app);
 	var search_term = req.body.frm_search;
 	var lunr_index = req.lunr_index;
 
@@ -1173,11 +1356,12 @@ router.post('/search', common.restrict, function(req, res){
     sortBy[sortByField] = sortByOrder;
 
 	// we search on the lunr indexes
-    common.dbQuery(db.kb, {_id: {$in: lunr_id_array}, kb_published: 'true'}, null, null, function(err, results){
+    common.dbQuery(db.kb, {_id: {$in: lunr_id_array}, kb_published: 'true', kb_versioned_doc: {$ne: true}}, null, null, function(err, results){
         common.dbQuery(db.kb, {kb_published: 'true', kb_featured: 'true'}, sortBy, featuredCount, function(err, featured_results){
             res.render('index', {
                 title: 'Search results: ' + search_term,
                 search_results: results,
+                user_page: true,
                 session: req.session,
                 search_term: search_term,
                 featured_results: featured_results,
@@ -1223,6 +1407,49 @@ router.get('/export', common.restrict, function(req, res){
 			return;
 		});
 	});
+});
+
+// return sitemap
+router.get('/sitemap.xml', function(req, res, next){
+    var sm = require('sitemap');
+    var db = req.app.db;
+
+    // get the articles
+    common.dbQuery(db.kb, {kb_published: 'true'}, null, null, function(err, articles){
+        var urlArray = [];
+
+        // push in the base url
+        urlArray.push({url: '/', changefreq: 'weekly', priority: 1.0});
+
+        // get the article URL's
+        for(var key in articles){
+            if(Object.prototype.hasOwnProperty.call(articles, key)){
+                // check for permalink
+                var pageUrl = '/kb/' + articles[key]._id;
+                if(articles[key].kb_permalink !== ''){
+                    pageUrl = '/kb/' + articles[key].kb_permalink;
+                }
+                urlArray.push({url: pageUrl, changefreq: 'weekly', priority: 1.0});
+            }
+        }
+
+        // create the sitemap
+        var sitemap = sm.createSitemap(
+        {
+            hostname: req.protocol + '://' + req.headers.host,
+            cacheTime: 600000,        // 600 sec - cache purge period
+            urls: urlArray
+        });
+
+        // render the sitemap
+        sitemap.toXML(function(err, xml){
+            if(err){
+                return res.status(500).end();
+            }
+            res.header('Content-Type', 'application/xml');
+            res.send(xml);
+        });
+    });
 });
 
 module.exports = router;

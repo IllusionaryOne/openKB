@@ -22,6 +22,21 @@ exports.suggest_allowed = function(req, res, next){
     res.render('error', {message: '403 - Forbidden', helpers: req.handlebars});
 };
 
+exports.validate_permalink = function(db, data, callback){
+    // only validate permalink if it exists
+    if(typeof data.kb_permalink === 'undefined' || data.kb_permalink === ''){
+		callback(null, 'All good');
+	}else{
+        db.kb.count({'kb_permalink': data.kb_permalink}, function (err, kb){
+            if(kb > 0){
+                callback('Permalink already exists', null);
+            }else{
+                callback(null, 'All good');
+            }
+        });
+    }
+};
+
 // This is called on all URL's. If the "password_protect" config is set to true
 // we check for a login on thsoe normally public urls. All other URL's get
 // checked for a login as they are considered to be protected. The only exception
@@ -78,6 +93,17 @@ exports.check_login = function(req, res, next){
 	}
 };
 
+// exposes select server side settings to the client
+exports.config_expose = function(app){
+    var config = exports.read_config();
+    var clientConfig = {};
+    clientConfig.add_header_anchors = config.settings.add_header_anchors !== undefined ? config.settings.add_header_anchors : false;
+    clientConfig.links_blank_page = config.settings.links_blank_page !== undefined ? config.settings.links_blank_page : true;
+    clientConfig.typeahead_search = config.settings.typeahead_search !== undefined ? config.settings.typeahead_search : true;
+    clientConfig.enable_spellchecker = config.settings.enable_spellchecker !== undefined ? config.settings.enable_spellchecker : true;
+    app.expose(clientConfig, 'config');
+};
+
 exports.setTemplateDir = function(type, req){
     var config = exports.read_config();
     if(type !== 'admin'){
@@ -99,6 +125,9 @@ exports.getId = function(id){
     var config = exports.read_config();
     var ObjectID = require('mongodb').ObjectID;
     if(config.settings.database.type === 'embedded'){
+        return id;
+    }
+    if(id.length !== 24){
         return id;
     }
     return ObjectID(id);

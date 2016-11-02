@@ -9,8 +9,8 @@
         <title>{{result.kb_title}}</title>
         <meta property="og:title" content="{{result.kb_title}}" />
         {{else}}
-        <title>PhantomBot Knowledgebase</title>
-        <meta property="og:title" content="PhantomBot Knowledgebase" />
+        <title>{{title}}</title>
+        <meta property="og:title" content="{{title}}" />
         {{/if}}
         {{/if}}
 	    <meta charset="utf-8">
@@ -24,63 +24,36 @@
         <meta name="description" content="{{substring (strip_md result.kb_body) 160}}">
         <meta property="og:description" content="{{substring (strip_md result.kb_body) 160}}" />
         {{else}}
-        {{#ifCond homepage '===' true}}
-        <meta name="description" content="{{config.settings.website_description}}">
-        <meta property="og:description" content="{{config.settings.website_description}}" />
-        {{else}}
-        <meta name="description" content="Powered by ZELAKTO.TV">
-        <meta property="og:description" content="Powered by ZELAKTO.TV" />
-        {{/ifCond}}
+        <meta name="description" content="Powered by openKB">
+        <meta property="og:description" content="Powered by openKB" />
         {{/if}}
         {{/if}}
         {{#if result.kb_keywords}}
 		<meta name="keywords" content="{{result.kb_keywords}}">
         {{else}}
-        <meta name="keywords" content="PhantomBot">
+        <meta name="keywords" content="openKB">
         {{/if}}
         <meta property="og:type" content="article" />
         <meta property="og:image" content="{{current_url}}/logo.png" />
         <meta property="og:url" content="{{fullUrl}}" />
         <link rel="canonical" href="{{fullUrl}}" />
-		<link rel="stylesheet" href="{{app_context}}/stylesheets/flatly.bootstrap.min.css">
-        <link rel="stylesheet" href="{{app_context}}/simplemde/simplemde.min.css">
+		<link rel="stylesheet" href="/themes/darkly/css/darkly.min.css">
         <link rel="stylesheet" href="{{app_context}}/stylesheets/github.css">
-		<link rel="stylesheet" href="{{app_context}}/stylesheets/style.css">
+		<link rel="stylesheet" href="/themes/darkly/css/style.css"> 
 		<link rel="stylesheet" href="{{app_context}}/font-awesome/css/font-awesome.min.css">
-		<link rel="stylesheet" href="{{app_context}}/stylesheets/mermaid.css">
-		<link rel="stylesheet" href="{{app_context}}/stylesheets/bootstrap-tokenfield.css">
-        <link rel="stylesheet" href="{{app_context}}/stylesheets/jpushmenu.css">
-        <link rel='icon' href='/favicon.png' />
 		<script src="{{app_context}}/jquery/jquery.min.js"></script>
-        <script>{{{state}}}</script>
 		<script src="{{app_context}}/bootstrap/js/bootstrap.min.js"></script>
-        {{#ifCond title '===' 'Settings'}}
-        <script src="{{app_context}}/bootstrapTabs/tab.js"></script>
-        {{/ifCond}}
-        <script src="{{app_context}}/javascripts/bootstrap-validator.js"></script>
-        {{#ifCond config.settings.enable_mermaid_charts '===' true}}
-		<script src="{{app_context}}/javascripts/mermaid.min.js"></script>
-        {{/ifCond}}
 		<script src="{{app_context}}/javascripts/markdown-it-classy.js"></script>
-		<script src="{{app_context}}/javascripts/bootstrap-tokenfield.min.js"></script>
-        <script src="{{app_context}}/javascripts/inline-attachment.js"></script>
-		<script src="{{app_context}}/javascripts/codemirror.inline-attachment.js"></script>
         <script src="{{app_context}}/javascripts/highlight.min.js"></script>
-        <script src="{{app_context}}/javascripts/loadingoverlay.min.js"></script>
-        <script src="{{app_context}}/simplemde/simplemde.min.js"></script>
 		<script src="{{app_context}}/markdown-it/markdown-it.min.js"></script>
-        {{#ifCond config.settings.typeahead_search '===' true}}
-        <script src="{{app_context}}/lunr/lunr.min.js"></script>
-        {{/ifCond}}
-        <script src="{{app_context}}/javascripts/jpushmenu.js"></script>
 		<script src="{{app_context}}/javascripts/openKB.js"></script>
         {{#ifCond user_page '===' true}}
         {{#if config.settings.google_analytics}}
         {{{config.settings.google_analytics}}}
         {{/if}}
-        {{/ifCond}} 
+        {{/ifCond}}
 	</head>
-	<body class="{{show_footer}}">	
+	<body class="{{show_footer}}">
 		<!-- Static navbar -->
 	    <nav class="navbar navbar-default navbar-static-top">
 			<div class="container-fluid">
@@ -90,16 +63,8 @@
 						<span class="icon-bar"></span>
 						<span class="icon-bar"></span>
 						<span class="icon-bar"></span>
-					</button>    
-                    {{#ifCond config.settings.show_website_logo '===' true}}
-                    <a class="navbar-brand brand-image" href="{{app_context}}/"><img src="/logo.png" width="140"></a>
-                    {{else}}
-                        {{#ifCond config.settings.website_title '===' 'openKB'}}
-                        <a class="navbar-brand brand-image" href="{{app_context}}/"><img src="/logo.png" width="140"></a>
-                        {{else}}
-                        <a class="navbar-brand" href="{{app_context}}/">{{config.settings.website_title}}</a>
-                        {{/ifCond}}
-                    {{/ifCond}}
+					</button>
+					<a class="navbar-brand" href="{{app_context}}/"><img alt="Brand" class="img-responsive" height="110" width="110" src="{{app_context}}/themes/darkly/images/logo.png"></a>
 				</div>
 				<div id="navbar" class="navbar-collapse collapse">
 					<ul class="nav navbar-nav navbar-right">
@@ -135,19 +100,17 @@
 								</ul>
 							</li>
                             {{/ifCond}}
-                            <li><a href="{{app_context}}/logout">Logout</a></li>
+							<li><a href="{{app_context}}/logout">Logout</a></li>
 						{{else}}
 							{{#if config.settings.suggest_allowed}}
 								<li><a href="{{app_context}}/suggest">Suggest</a></li>
 							{{/if}}
-                            {{#ifCond config.settings.show_logon '==' true}}
-							    <li><a href="{{app_context}}/login">Login</a></li>
-                            {{/ifCond}}
-						{{/if}}	
+							<li><a href="{{app_context}}/login">Login</a></li>
+						{{/if}}
 					</ul>
 				</div>
 	      </div>
-	    </nav>	
+	    </nav>
 		<div class="container-fluid">
 			{{{body}}}
 		</div>
@@ -159,14 +122,7 @@
 		{{#if show_footer}}
 			<footer class="footer">
 				<div class="container">
-					<p class="text-muted">
-					Copyright &copy
-						<script language="javascript" type="text/javascript">
-							var today = new Date()
-							var year = today.getFullYear()
-							document.write(year)
-						</script>
-					PhantomBot - <a href="https://zelakto.tv/">Powered by ZELAKTO.TV</a></p>
+					<p>Powered by openKB</p>
 				</div>
 			</footer>
 		{{/if}}

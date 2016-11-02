@@ -1,16 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		{{#if result.kb_seo_title}}
-		<title>{{result.kb_seo_title}}</title>
-		<meta property="og:title" content="{{result.kb_seo_title}}" />
-		{{else}}
-		{{#if result.kb_title}}
-		<title>{{result.kb_title}}</title>
-		<meta property="og:title" content="{{result.kb_title}}" />
-		{{else}}
-		<title>PhantomBot Knowledgebase</title>
-		<meta property="og:title" content="PhantomBot Knowledgebase" />
+        {{#if result.kb_seo_title}}
+        <title>{{result.kb_seo_title}}</title>
+        {{else}}
+        {{#if result.kb_title}}
+        <title>{{result.kb_title}}</title>
+        {{else}}
+        <title>{{title}}</title>
         {{/if}}
         {{/if}}
 	    <meta charset="utf-8">
@@ -22,8 +19,7 @@
         {{#if result.kb_body}}
         <meta name="description" content="{{substring (strip_md result.kb_body) 160}}">
         {{else}}
-				<meta name="description" content="Powered by ZELAKTO.TV">
-        <meta property="og:description" content="Powered by ZELAKTO.TV" />
+        <meta name="description" content="Powered by openKB">
         {{/if}}
         {{/if}}
         {{#if result.kb_keywords}}
@@ -31,16 +27,16 @@
         {{else}}
         <meta name="keywords" content="openKB">
         {{/if}}
-		<link rel="stylesheet" href="/bootstrap/css/bootstrap.min.css">
-        <link rel="stylesheet" href="/simplemde/simplemde.min.css">
+		<link rel="stylesheet" href="{{app_context}}/bootstrap/css/bootstrap.min.css">
+        <link rel="stylesheet" href="{{app_context}}/simplemde/simplemde.min.css">
         <link rel="stylesheet" href="/stylesheets/github.css">
 		<link rel="stylesheet" href="/themes/twitter/css/style.css">
-		<link rel="stylesheet" href="/font-awesome/css/font-awesome.min.css">
+		<link rel="stylesheet" href="{{app_context}}/font-awesome/css/font-awesome.min.css">
 		<link rel="stylesheet" href="/stylesheets/mermaid.css">
 		<link rel="stylesheet" href="/stylesheets/bootstrap-tokenfield.css">
         <link rel="stylesheet" href="/stylesheets/jpushmenu.css">
-		<script src="/jquery/jquery.min.js"></script>
-		<script src="/bootstrap/js/bootstrap.min.js"></script>
+		<script src="{{app_context}}/jquery/jquery.min.js"></script>
+		<script src="{{app_context}}/bootstrap/js/bootstrap.min.js"></script>
         <script src="/javascripts/bootstrap-validator.js"></script>
 		<script src="/javascripts/mermaid.min.js"></script>
 		<script src="/javascripts/markdown-it-classy.js"></script>
@@ -48,12 +44,12 @@
         <script src="/javascripts/inline-attachment.js"></script>
 		<script src="/javascripts/codemirror.inline-attachment.js"></script>
         <script src="/javascripts/highlight.min.js"></script>
-        <script src="/simplemde/simplemde.min.js"></script>
-		<script src="/markdown-it/markdown-it.min.js"></script>
+        <script src="{{app_context}}/simplemde/simplemde.min.js"></script>
+		<script src="{{app_context}}/markdown-it/markdown-it.min.js"></script>
         <script src="/javascripts/jpushmenu.js"></script>
 		<script src="/javascripts/openKB.js"></script>
 	</head>
-	<body class="{{show_footer}}">
+	<body class="{{show_footer}}">	
 		<!-- Static navbar -->
 		<div class="container-fluid">
 			{{{body}}}
@@ -64,14 +60,7 @@
 		{{#if show_footer}}
 			<footer class="footer">
 				<div class="container">
-					<p class="text-muted text-center">
-					Copyright &copy;
-						<script language="javascript" type="text/javascript">
-							var today = new Date()
-							var year = today.getFullYear()
-							document.write(year)
-						</script>
-					PhantomBot - <a href="https://zelakto.tv/">Powered by ZELAKTO.TV</a></p>
+					<p class="text-muted text-center">Powered by openKB</p>
 				</div>
 			</footer>
 		{{/if}}

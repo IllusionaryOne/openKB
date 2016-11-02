@@ -1,6 +1,5 @@
 var express = require('express');
 var path = require('path');
-var favicon = require('serve-favicon');
 var logger = require('morgan');
 var handlebars = require('express-handlebars');
 var cookieParser = require('cookie-parser');
@@ -17,13 +16,26 @@ var remove_md = require('remove-markdown');
 var common = require('./routes/common');
 var config = common.read_config();
 var MongoClient = require('mongodb').MongoClient;
+var expstate = require('express-state');
+var compression = require('compression');
+var lunr_store = {};
 
 markdownit.use(require("markdown-it-toc"));
 
 // require the routes
 var index = require('./routes/index');
+var api = require('./routes/api');
 
 var app = express();
+
+// compress all requests
+app.use(compression());
+
+// setup express-state
+expstate.extend(app);
+
+// add the config items we want to expose to the client
+common.config_expose(app);
 
 // check theme directory exists if set
 if(config.settings.theme){
@@ -55,8 +67,11 @@ handlebars = handlebars.create({
         encodeURI: function(url){
             return encodeURI(url);
         },
+        removeEmail: function(user){
+            return user.replace(/ - ([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/, '');
+        },
         checked_state: function (state){
-            if(state === true){
+            if(state === true || state === 'true'){
                 return'checked';
             }
             return'';
@@ -79,7 +94,10 @@ handlebars = handlebars.create({
             return val;
         },
         strip_md: function(md){
-            return remove_md(md);
+            if(md !== null && md !== ''){
+                return remove_md(md);
+            }
+            return md;
         },
         view_count: function(value){
             if(value === '' || value === undefined){
@@ -137,8 +155,6 @@ handlebars = handlebars.create({
     }
 });
 
-// uncomment after placing your favicon in /public
-app.use(favicon(path.join(__dirname, '/public/favicon.ico')));
 app.enable('trust proxy');
 app.set('port', process.env.PORT || 4444);
 app.use(logger('dev'));
@@ -170,12 +186,14 @@ app.use(app_context + '/static', express.static(path.join(__dirname, 'public/'))
 app.use(app_context + '/font-awesome', express.static(path.join(__dirname, 'node_modules/font-awesome/')));
 app.use(app_context + '/jquery', express.static(path.join(__dirname, 'node_modules/jquery/dist/')));
 app.use(app_context + '/bootstrap', express.static(path.join(__dirname, 'node_modules/bootstrap/dist/')));
+app.use(app_context + '/bootstrapTabs', express.static(path.join(__dirname, 'node_modules/bootstrap/js/')));
 app.use(app_context + '/simplemde', express.static(path.join(__dirname, 'node_modules/simplemde/dist/')));
 app.use(app_context + '/markdown-it', express.static(path.join(__dirname, 'node_modules/markdown-it/dist/')));
 app.use(app_context + '/stylesheets', express.static(path.join(__dirname, 'public/stylesheets')));
 app.use(app_context + '/fonts', express.static(path.join(__dirname, 'public/fonts')));
 app.use(app_context + '/javascripts', express.static(path.join(__dirname, 'public/javascripts')));
-app.use(app_context + '/favicon.ico', express.static(path.join(__dirname, 'public/favicon.ico')));
+app.use(app_context + '/lunr', express.static(path.join(__dirname, 'node_modules/lunr')));
+app.use(app_context + '/favicon.png', express.static(path.join(__dirname, 'public/favicon.png')));
 
 // serving static content
 app.use(express.static(path.join(__dirname, 'public')));
@@ -186,6 +204,7 @@ app.use(function (req, res, next){
 	req.handlebars = handlebars.helpers;
     req.bcrypt = bcrypt;
     req.lunr_index = lunr_index;
+    req.lunr_store = lunr_store;
     req.app_context = app_context;
 	next();
 });
@@ -193,8 +212,10 @@ app.use(function (req, res, next){
 // setup the routes
 if(app_context !== ''){
     app.use(app_context, index);
+    app.use(app_context, api);
 }else{
     app.use('/', index);
+    app.use('/', api);
 }
 
 // catch 404 and forward to error handler
@@ -241,6 +262,7 @@ if(config.settings.database.type === 'embedded'){
     db = {};
     db.users = new Nedb({filename: path.join(__dirname, '/data/users.db'), autoload: true});
     db.kb = new Nedb({filename: path.join(__dirname, '/data/kb.db'), autoload: true});
+    db.votes = new Nedb({filename: path.join(__dirname, '/data/votes.db'), autoload: true});
 
     // add db to app for routes
     app.db = db;
@@ -264,6 +286,7 @@ if(config.settings.database.type === 'embedded'){
         // setup the collections
         db.users = db.collection('users');
         db.kb = db.collection('kb');
+        db.votes = db.collection('votes');
 
         // add db to app for routes
         app.db = db;
@@ -283,13 +306,17 @@ if(config.settings.database.type === 'embedded'){
 var lunr_index = lunr(function (){
     this.field('kb_title', {boost: 10});
     this.field('kb_keywords');
-    this.field('kb_body');
 });
+
+// if index body is switched on
+if(config.settings.index_article_body === true){
+    lunr_index.field('kb_body');
+}
 
 function indexArticles(db, callback){
     // get all articles on startup
     if(config.settings.database.type === 'embedded'){
-        db.kb.find({}, function (err, kb_list){
+        db.kb.find({kb_published: 'true'}, function (err, kb_list){
             // add to lunr index
             kb_list.forEach(function(kb){
                 // only if defined
@@ -297,31 +324,52 @@ function indexArticles(db, callback){
                 if(kb.kb_keywords !== undefined){
                     keywords = kb.kb_keywords.toString().replace(/,/g, ' ');
                 }
+
                 var doc = {
                     'kb_title': kb.kb_title,
                     'kb_keywords': keywords,
-                    'id': kb._id,
-                    'kb_body': kb.kb_body
+                    'id': kb._id
                 };
+
+                // if index body is switched on
+                if(config.settings.index_article_body === true){
+                    doc['kb_body'] = kb.kb_body;
+                }
+
+                // add to store
+                var href = kb.kb_permalink !== '' ? kb.kb_permalink : kb._id;
+                lunr_store[kb._id] = {t: kb.kb_title, p: href};
+
                 lunr_index.add(doc);
             });
 
             callback(null);
         });
     }else{
-        db.kb.find({}).toArray(function (err, kb_list){
+        db.kb.find({kb_published: 'true'}).toArray(function (err, kb_list){
             // add to lunr index
             kb_list.forEach(function(kb){
                 // only if defined
                 var keywords = '';
-                if(kb.kb_keywords !== undefined){
+                if(typeof kb.kb_keywords !== 'undefined' && kb.kb_keywords !== null){
                     keywords = kb.kb_keywords.toString().replace(/,/g, ' ');
                 }
+
                 var doc = {
                     'kb_title': kb.kb_title,
                     'kb_keywords': keywords,
                     'id': kb._id
                 };
+
+                // if index body is switched on
+                if(config.settings.index_article_body === true){
+                    doc['kb_body'] = kb.kb_body;
+                }
+
+                // add to store
+                var href = kb.kb_permalink !== '' ? kb.kb_permalink : kb._id;
+                lunr_store[kb._id] = {t: kb.kb_title, p: href};
+
                 lunr_index.add(doc);
             });
 

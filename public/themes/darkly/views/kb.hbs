@@ -1,27 +1,23 @@
-<div class="row">
+<div class="row searchBar">
+    <h1 class="text-center">How can we help you...</h1>
 	<form action="{{app_context}}/search" id="search_form" method="post">
 		{{#ifBoth config.settings.show_featured_articles config.settings.show_featured_in_article}}
-		    <div class="col-md-10 col-md-offset-1 col-lg-10 col-lg-offset-1 search_bar">
+		    <div class="col-md-6 col-md-offset-3 col-lg-6 col-lg-offset-3 search_bar">
         {{else}}
-            <div class="col-md-8 col-md-offset-2 col-lg-8 col-lg-offset-2 search_bar">
+            <div class="col-md-6 col-md-offset-3 col-lg-6 col-lg-offset-3 search_bar">
         {{/ifBoth}}
 			<div class="input-group">
-				<input type="text" name="frm_search" id="frm_search" autocomplete="off" class="form-control input-lg" placeholder="Search the knowledge base">
+				<input type="text" name="frm_search" id="frm_search" class="form-control input-lg" placeholder="Search the knowledge base">
 				<span class="input-group-btn">
 					<button class="btn btn-success btn-lg" id="btn_search" type="submit">Search</button>
 				</span>
 			</div>
-            {{#ifCond config.settings.typeahead_search '===' true}}
-            <div id="searchResult" class="hidden col-lg-12">
-                <ul class="list-group searchResultList"></ul>
-            </div>
-            {{/ifCond}}
 		</div>
 	</form>
 </div>
 <div class="row">
     {{#ifBoth config.settings.show_featured_articles config.settings.show_featured_in_article}}
-        <div class="col-md-2 col-md-offset-1 col-lg-2 col-lg-offset-1">
+        <div class="col-md-2 col-md-offset-2 col-lg-2 col-lg-offset-2">
             <div style="margin-top: 30px;">
                 <ul class="list-group">
                     <li class="list-group-item list-group-heading">Featured articles</li>
@@ -35,9 +31,9 @@
                 </ul>
             </div>
         </div>
-        <div class="col-md-8 col-lg-8">
+        <div class="col-md-6 col-lg-6">
     {{else}}
-        <div class="col-md-8 col-md-offset-2 col-lg-8 col-lg-offset-2">
+        <div class="col-md-6 col-md-offset-3 col-lg-6 col-lg-offset-3">
     {{/ifBoth}}
 		<h1 style="padding-bottom: 25px;padding-top: 15px;">{{result.kb_title}}</h1>
 		<div class="body_text">
@@ -97,7 +93,7 @@
                             {{/if}}
                             {{#if result.kb_permalink}}
                             <h5 class="col-sm-12 col-lg-6">
-                                <strong>Permalink:</strong> <a href="https://docs.phantombot.tv/kb/{{result.kb_permalink}}" target="_blank">https://docs.phantombot.tv/kb/{{result.kb_permalink}}</a>
+                                <strong>Permalink:</strong> <a href="{{current_url}}/kb/{{result.kb_permalink}}" target="_blank">{{current_url}}/kb/{{result.kb_permalink}}</a>
                             </h5>
                             {{/if}}
                         </div>
@@ -105,9 +101,11 @@
                 </div>
             </div>
 		{{/if}}
-		<h5 class="keywords">
-			{{{split_keywords result.kb_keywords}}}
-		</h5>
+        {{#if result.kb_keywords}}
+            <h5 class="keywords">
+                Keywords: {{{split_keywords result.kb_keywords}}}
+            </h5>
+        {{/if}}
 	</div>
     <input type="hidden" id="doc_id" value={{result._id}}>
 </div>
